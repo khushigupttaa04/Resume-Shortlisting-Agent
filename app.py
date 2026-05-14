@@ -10,6 +10,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 from dotenv import load_dotenv
 load_dotenv()
+from reportlab.platypus import Image
+from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image, HRFlowable)
+from reportlab.lib.units import cm
+from reportlab.lib import colors
 # ─────────────────────────────────────────────────────────────────────────────
 # Page config — must be first Streamlit call
 # ─────────────────────────────────────────────────────────────────────────────
@@ -730,21 +734,23 @@ if run_btn:
     st.session_state.results = results
     st.session_state.run_done = True
 
+    # ─────────────────────────────────────────────
+    # AUTOMATED GRAPH CREATION FOR PDF
+    # ─────────────────────────────────────────────
     if results:
         import pandas as pd
-        
+        import os
+        os.makedirs("temp_plots", exist_ok=True)
         # 1. Prepare Data
         rows = []
         for r in results:
             name = r["candidate_info"].get("name", "Unknown")
-            # Overall Score
             rows.append({
                 "Candidate": name,
                 "Type": "Total",
                 "Dimension": "Overall",
                 "Score": r["scores"]["total_score"]
             })
-            # Dimension Scores
             for d in r["scores"]["dimension_scores"]:
                 rows.append({
                     "Candidate": name,
@@ -756,20 +762,17 @@ if run_btn:
 
         # 2. Overall Ranking Graph
         df_rank = df_plot[df_plot["Type"] == "Total"].sort_values("Score", ascending=False)
-        fig_overall = px.bar(df_rank, x="Candidate", y="Score", title="Overall Candidate Ranking", color_discrete_sequence=["#D4A017"])
-        st.session_state["fig_overall"] = fig_overall
+        st.session_state["fig_overall"] = px.bar(df_rank, x="Candidate", y="Score", title="Overall Ranking", color_discrete_sequence=["#D4A017"])
 
         # 3. Heatmap Graph
         df_heat = df_plot[df_plot["Type"] == "Dimension"].pivot(index="Candidate", columns="Dimension", values="Score")
-        fig_heat = go.Figure(data=go.Heatmap(z=df_heat.values, x=df_heat.columns, y=df_heat.index, colorscale='Oryel'))
-        st.session_state["fig_heat"] = fig_heat
+        st.session_state["fig_heat"] = go.Figure(data=go.Heatmap(z=df_heat.values, x=df_heat.columns, y=df_heat.index, colorscale='Oryel'))
 
         # 4. Per-Candidate Graphs
         for r in results:
             name = r["candidate_info"].get("name", "Unknown")
             c_df = pd.DataFrame(r["scores"]["dimension_scores"])
-            fig_c = px.bar(c_df, x="dimension", y="score", title=f"Score Breakdown: {name}", color_discrete_sequence=["#4A3F2F"])
-            st.session_state[f"fig_chart_{name}"] = fig_c
+            st.session_state[f"fig_chart_{name}"] = px.bar(c_df, x="dimension", y="score", title=f"Score Breakdown: {name}", color_discrete_sequence=["#4A3F2F"])
 
     progress.progress(100, text="Done!")
 
