@@ -27,16 +27,25 @@ from langchain_community.cache import SQLiteCache
 # ── PDF report ────────────────────────────────────────────────────────────────
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
+
 from reportlab.platypus import (
-    SimpleDocTemplate, Table, TableStyle,
-    Paragraph, Spacer, HRFlowable, PageBreak,
+    SimpleDocTemplate,
+    Table,
+    TableStyle,
+    Paragraph,
+    Spacer,
+    HRFlowable,
+    PageBreak,
+    Image
 )
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+from reportlab.lib.styles import (
+    getSampleStyleSheet,
+    ParagraphStyle
+)
+
 from reportlab.lib.units import inch, cm
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
-pip install kaleido
-import plotly.io as pio
-
 DELAY_BETWEEN_CANDIDATES = 4   # gemini free-tier RPM
 
 # Brand palette
@@ -488,6 +497,8 @@ def override_score(
 # PDF REPORT GENERATOR
 
 def generate_pdf_report(results: list, jd: dict, path: str = "outputs/shortlist_report.pdf") -> str:
+    from reportlab.platypus import Image
+
     """
     Professional B&W ReportLab PDF with Table and XAI Graph Support.
     """
@@ -553,11 +564,11 @@ def generate_pdf_report(results: list, jd: dict, path: str = "outputs/shortlist_
     import streamlit as st
     story.append(Paragraph("Executive Visualization", T_SEC))
     
-    # Loop through the global charts we saved in app.py
     for fig_key in ["fig_overall", "fig_heat"]:
         if fig_key in st.session_state:
             img_path = f"temp_plots/{fig_key}.png"
-            st.session_state[fig_key].write_image(img_path, engine="kaleido", width=800, height=400, scale=2)
+            # Converts Plotly to PNG
+            st.session_state[fig_key].write_image(img_path, engine="kaleido", width=600, height=300)
             story.append(Image(img_path, width=16*cm, height=8*cm))
             story.append(Spacer(1, 0.5*cm))
 
@@ -567,27 +578,75 @@ def generate_pdf_report(results: list, jd: dict, path: str = "outputs/shortlist_
     for r in results:
         name = r["candidate_info"].get("name", "?")
         story.append(Paragraph(f"Detailed Evaluation: {name}", T_SEC))
+        
+        # Insert Per-Candidate Graph
         fig_key = f"fig_chart_{name}"
         if fig_key in st.session_state:
             img_path = f"temp_plots/chart_{name.replace(' ', '_')}.png"
             st.session_state[fig_key].write_image(img_path, engine="kaleido", width=700, height=350)
             story.append(Image(img_path, width=14*cm, height=7*cm))
             story.append(Spacer(1, 0.5*cm))
+
         # Scoring Table
-        dim_rows = [["Dimension", "Score", "Justification"]]
+        styles = getSampleStyleSheet()
+
+        cell_style = ParagraphStyle(
+          "cell_style",
+          parent=styles["BodyText"],
+          fontName="Helvetica",
+          fontSize=8.5,
+          leading=12,
+          textColor=colors.black,
+        )
+        header_style = ParagraphStyle(
+          "header_style",
+          parent=styles["BodyText"],
+          fontName="Helvetica-Bold",
+          fontSize=9,
+          leading=12,
+          textColor=colors.black,
+        )
+
+
+        dim_rows = [[
+            Paragraph("<b>Dimension</b>", header_style),
+            Paragraph("<b>Score</b>", header_style),
+            Paragraph("<b>Justification</b>", header_style),
+        ]]
+
         for d in r["scores"]["dimension_scores"]:
-            # Truncate justification for table fit
+
             just = d["justification"]
-            short_just = (just[:120] + '...') if len(just) > 120 else just
-            dim_rows.append([d["dimension"], f"{d['score']}/10", short_just])
-            
-        dt = Table(dim_rows, colWidths=[4*cm, 2*cm, 11*cm])
+
+            dim_rows.append([
+            Paragraph(d["dimension"], cell_style),
+            Paragraph(f"{d['score']}/10", cell_style),
+            Paragraph(just, cell_style),
+            ])
+
+        dt = Table(
+            dim_rows,
+            colWidths=[4*cm, 2.2*cm, 10.8*cm],
+            repeatRows=1
+        )
+
         dt.setStyle(TableStyle([
             ("GRID", (0,0), (-1,-1), 0.5, colors.black),
+
+            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#EAEAEA")),
+
             ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-            ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-            ("FONTSIZE", (0,0), (-1,-1), 8.5),
+
             ("VALIGN", (0,0), (-1,-1), "TOP"),
+
+            ("BOTTOMPADDING", (0,0), (-1,0), 8),
+            ("TOPPADDING", (0,0), (-1,0), 8),
+
+            ("BOTTOMPADDING", (0,1), (-1,-1), 6),
+            ("TOPPADDING", (0,1), (-1,-1), 6),
+
+            ("LEFTPADDING", (0,0), (-1,-1), 6),
+            ("RIGHTPADDING", (0,0), (-1,-1), 6),
         ]))
         story += [dt, Spacer(1, 0.5*cm)]
 
