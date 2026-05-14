@@ -526,7 +526,6 @@ def generate_pdf_report(results: list, jd: dict, path: str = "outputs/shortlist_
     story += [
         Spacer(1, 2*cm),
         Paragraph("HR SHORTLIST REPORT", T_TITLE),
-        HRFlowable(width="100%", thickness=1, color=colors.black),
         Spacer(1, 0.5*cm),
         Paragraph(f"Role: {jd.get('role_title','N/A')} | Total Candidates: {len(results)}", T_SUB),
         Paragraph(f"Report Date: {datetime.now().strftime('%d %b %Y %H:%M')}", T_SUB),
