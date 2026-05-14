@@ -34,6 +34,8 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch, cm
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
+pip install kaleido
+import plotly.io as pio
 
 DELAY_BETWEEN_CANDIDATES = 4   # gemini free-tier RPM
 
@@ -487,187 +489,114 @@ def override_score(
 
 def generate_pdf_report(results: list, jd: dict, path: str = "outputs/shortlist_report.pdf") -> str:
     """
-    Professional ReportLab PDF with:
-      – Cover page  – Rankings summary  – Per-candidate rubric breakdown
-      – XAI (LIME keywords + dimension contributions)  – Audit footer
+    Professional B&W ReportLab PDF with Table and XAI Graph Support.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    os.makedirs("temp_plots", exist_ok=True) # Storage for static graph images
+    
     doc = SimpleDocTemplate(
         path, pagesize=A4,
         topMargin=1.2*cm, bottomMargin=1.2*cm,
-        leftMargin=2*cm, rightMargin=2*cm,
+        leftMargin=1.5*cm, rightMargin=1.5*cm,
     )
     styles = getSampleStyleSheet()
-    story  = []
+    story = []
 
-    #  helpers 
+    # ── BLACK & WHITE THEME STYLES ──────────────────────────────────────────
     def sty(name, **kw):
         return ParagraphStyle(name, **kw)
 
-    T_TITLE   = sty("T", fontSize=22, fontName="Helvetica-Bold",
-                    textColor=C_NAVY, alignment=TA_CENTER, spaceAfter=4)
-    T_SUB     = sty("S", fontSize=9, textColor=C_DGRAY,
-                    alignment=TA_CENTER, spaceAfter=14)
-    T_SEC     = sty("SEC", fontSize=13, fontName="Helvetica-Bold",
-                    textColor=C_NAVY, spaceBefore=14, spaceAfter=6)
-    T_XAI     = sty("XAI", fontSize=11, fontName="Helvetica-Bold",
-                    textColor=C_PURPLE, spaceBefore=10, spaceAfter=4)
-    T_BODY    = sty("BD", fontSize=8.5, leading=12, textColor=C_DGRAY)
-    T_FOOT    = sty("FT", fontSize=7, textColor=colors.HexColor("#9CA3AF"),
-                    alignment=TA_CENTER, spaceBefore=8)
+    T_TITLE = sty("T", fontSize=22, fontName="Helvetica-Bold", textColor=colors.black, alignment=TA_CENTER, spaceAfter=10)
+    T_SEC   = sty("SEC", fontSize=14, fontName="Helvetica-Bold", textColor=colors.black, spaceBefore=15, spaceAfter=10)
+    T_BODY  = sty("BD", fontSize=9, leading=12, textColor=colors.black)
+    T_SUB   = sty("S", fontSize=8, textColor=colors.grey, alignment=TA_CENTER)
 
-    def hr():
-        return HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#D1D5DB"))
-
-    #  Cover 
+    # ── COVER PAGE ──────────────────────────────────────────────────────────
     story += [
-        Spacer(1, 1.2*cm),
-        Paragraph("TalentMatch AI", T_TITLE),
-        Paragraph("HR Resume Shortlisting Report", T_TITLE),
-        Spacer(1, 0.3*cm),
-        hr(),
-        Spacer(1, 0.3*cm),
-        Paragraph(
-            f"Role: <b>{jd.get('role_title','N/A')}</b> &nbsp;|&nbsp; "
-            f"Generated: {datetime.now().strftime('%d %b %Y %H:%M')} &nbsp;|&nbsp; "
-            f"Model: Gemini 2.5 Flash (LangChain LCEL) &nbsp;|&nbsp; "
-            f"Candidates: {len(results)}",
-            T_SUB,
-        ),
-        Spacer(1, 0.4*cm),
-        Paragraph("🔬 Powered by Explainable AI (XAI) — LIME + Dimension Contributions", T_XAI),
-        Spacer(1, 0.2*cm),
-        Paragraph(
-            "This report was produced by an AI agent and is intended to <i>assist</i> — not replace — "
-            "qualified human recruiters. Every dimension score can be overridden via <b>override_score()</b>. "
-            "Full audit trail stored in <b>audit_log.json</b>.",
-            T_BODY,
-        ),
-        PageBreak(),
+        Spacer(1, 2*cm),
+        Paragraph("TALENTMATCH AI: SHORTLIST REPORT", T_TITLE),
+        HRFlowable(width="100%", thickness=1, color=colors.black),
+        Spacer(1, 0.5*cm),
+        Paragraph(f"Role: {jd.get('role_title','N/A')} | Total Candidates: {len(results)}", T_SUB),
+        Paragraph(f"Report Date: {datetime.now().strftime('%d %b %Y %H:%M')}", T_SUB),
+        Spacer(1, 1*cm),
     ]
 
-    # Rankings summary table 
-    story += [Paragraph("Candidate Rankings", T_SEC)]
-
-    hdr = [["Rank", "Candidate", "Similarity", "Total", "Skills", "Exp", "Edu", "Projects", "Comm", "Decision"]]
+    # ── RANKED SUMMARY TABLE ────────────────────────────────────────────────
+    story.append(Paragraph("Candidate Rankings & Decisions", T_SEC))
+    
+    hdr = [["Rank", "Candidate", "Similarity", "Total Score", "Decision"]]
     rows = hdr.copy()
+    
     for i, r in enumerate(results, 1):
-        ds = {d["dimension"]: d["score"] for d in r["scores"]["dimension_scores"]}
         rows.append([
             str(i),
-            r["candidate_info"].get("name","?")[:22],
+            r["candidate_info"].get("name","?"),
             r.get("embedding", {}).get("similarity_pct", "—"),
             f"{r['scores']['total_score']}/10",
-            f"{ds.get('Skills Match',0):.1f}",
-            f"{ds.get('Experience',0):.1f}",
-            f"{ds.get('Education & Certs',0):.1f}",
-            f"{ds.get('Projects',0):.1f}",
-            f"{ds.get('Communication',0):.1f}",
-            r["scores"]["recommendation"],
+            r["scores"]["recommendation"]
         ])
 
-    tbl = Table(rows, colWidths=[0.5*cm, 3.5*cm, 1.8*cm, 1.4*cm,
-                                  1.2*cm, 1.0*cm, 1.0*cm, 1.5*cm, 1.0*cm, 2.0*cm])
+    tbl = Table(rows, colWidths=[1.5*cm, 6*cm, 2.5*cm, 3*cm, 4*cm])
     tbl.setStyle(TableStyle([
-        ("BACKGROUND",     (0,0), (-1,0),  C_NAVY),
-        ("TEXTCOLOR",      (0,0), (-1,0),  colors.white),
-        ("FONTNAME",       (0,0), (-1,0),  "Helvetica-Bold"),
-        ("FONTSIZE",       (0,0), (-1,-1), 7.5),
-        ("ALIGN",          (0,0), (-1,-1), "CENTER"),
-        ("ROWBACKGROUNDS", (0,1), (-1,-1), [C_LGRAY, colors.white]),
-        ("GRID",           (0,0), (-1,-1), 0.3, colors.HexColor("#D1D5DB")),
-        ("TOPPADDING",     (0,0), (-1,-1), 4),
-        ("BOTTOMPADDING",  (0,0), (-1,-1), 4),
-        # top-3 highlight
-        ("BACKGROUND",     (0,1), (-1,min(3,len(rows)-1)), colors.HexColor("#D1FAE5")),
+        ("BACKGROUND", (0,0), (-1,0), colors.black),
+        ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+        ("GRID", (0,0), (-1,-1), 0.5, colors.black),
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("ALIGN", (0,0), (-1,-1), "CENTER"),
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ("FONTSIZE", (0,0), (-1,-1), 9),
     ]))
-    story += [tbl, Spacer(1, 0.3*cm), PageBreak()]
+    story += [tbl, PageBreak()]
 
-    # Per-candidate detail 
+    # ── XAI GRAPHS SECTION ──────────────────────────────────────────────────
+    # Note: For this to work, you must store your plotly figures in st.session_state 
+    # as 'fig_grouped' and 'fig_heat' in your Streamlit UI code.
+    import streamlit as st
+    
+    story.append(Paragraph("Visual XAI Insights", T_SEC))
+    
+    for fig_key in ["fig_grouped", "fig_heat"]:
+        if fig_key in st.session_state:
+            fig = st.session_state[fig_key]
+            img_path = f"temp_plots/{fig_key}.png"
+            
+            # Export plotly fig to static PNG
+            fig.write_image(img_path, engine="kaleido", width=800, height=400, scale=2)
+            
+            story.append(Paragraph(f"Analysis Visualization: {fig_key.replace('fig_', '').title()}", T_BODY))
+            story.append(Image(img_path, width=16*cm, height=8*cm))
+            story.append(Spacer(1, 0.5*cm))
+
+    if "fig_grouped" in st.session_state or "fig_heat" in st.session_state:
+        story.append(PageBreak())
+
+    # ── PER-CANDIDATE DETAIL ───────────────────────────────────────────────
     for r in results:
-        name  = r["candidate_info"].get("name", "?")
-        total = r["scores"]["total_score"]
-        rec   = r["scores"]["recommendation"]
-        rank  = r.get("rank", "?")
-
-        story += [
-            Paragraph(f"#{rank}  {name}  —  {total}/10  ({rec})", T_SEC),
-            hr(),
-        ]
-
-        # quick info line
-        info = (
-            f"Experience: {r['candidate_info'].get('total_experience','?')} yrs  |  "
-            f"Skill Match: {r['skill_match']['match_summary']}  |  "
-            f"Similarity: {r.get('embedding',{}).get('similarity_pct','—')}"
-        )
-        story.append(Paragraph(info, T_BODY))
-        story.append(Spacer(1, 0.2*cm))
-
-        # dimension table
-        dim_rows = [["Dimension", "Wt", "Score", "Justification"]]
+        name = r["candidate_info"].get("name", "?")
+        story.append(Paragraph(f"Detailed Evaluation: {name}", T_SEC))
+        
+        # Scoring Table
+        dim_rows = [["Dimension", "Score", "Justification"]]
         for d in r["scores"]["dimension_scores"]:
-            j = d["justification"]
-            dim_rows.append([
-                d["dimension"],
-                f"{int(d['weight']*100)}%",
-                f"{d['score']}/10",
-                (j[:90] + "…") if len(j) > 90 else j,
-            ])
-        dt = Table(dim_rows, colWidths=[3.2*cm, 0.8*cm, 1.2*cm, 10.8*cm])
+            # Truncate justification for table fit
+            just = d["justification"]
+            short_just = (just[:120] + '...') if len(just) > 120 else just
+            dim_rows.append([d["dimension"], f"{d['score']}/10", short_just])
+            
+        dt = Table(dim_rows, colWidths=[4*cm, 2*cm, 11*cm])
         dt.setStyle(TableStyle([
-            ("BACKGROUND",     (0,0), (-1,0),  colors.HexColor("#E0F2FE")),
-            ("FONTNAME",       (0,0), (-1,0),  "Helvetica-Bold"),
-            ("FONTSIZE",       (0,0), (-1,-1), 7.5),
-            ("ALIGN",          (1,0), (2,-1),  "CENTER"),
-            ("ALIGN",          (0,0), (0,-1),  "LEFT"),
-            ("ALIGN",          (3,0), (3,-1),  "LEFT"),
-            ("GRID",           (0,0), (-1,-1), 0.3, colors.HexColor("#CBD5E1")),
-            ("TOPPADDING",     (0,0), (-1,-1), 3),
-            ("BOTTOMPADDING",  (0,0), (-1,-1), 3),
-            ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.HexColor("#FAFAFA"), colors.white]),
+            ("GRID", (0,0), (-1,-1), 0.5, colors.black),
+            ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+            ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+            ("FONTSIZE", (0,0), (-1,-1), 8.5),
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
         ]))
-        story += [dt, Spacer(1, 0.15*cm)]
-
-        # XAI section
-        story.append(Paragraph("🔬 XAI Insights", T_XAI))
-        contribs = r.get("xai_contributions", [])
-        if contribs:
-            c_str = "  |  ".join(
-                f"{c['dimension'].split()[0]}: {'+'if c['contribution']>=0 else ''}{c['contribution']:.3f}"
-                for c in contribs
-            )
-            story.append(Paragraph(f"Dimension contributions vs baseline (5.0): <i>{c_str}</i>", T_BODY))
-
-        lime_feats = r.get("xai_features", [])
-        if lime_feats:
-            l_str = "  ".join(f"'{w}'({v:+.2f})" for w, v in lime_feats[:6])
-            story.append(Paragraph(f"LIME keywords: <i>{l_str}</i>", T_BODY))
-
-        # strengths / concerns
-        story.append(Spacer(1, 0.1*cm))
-        if r["scores"].get("strengths"):
-            story.append(Paragraph("<b>Strengths:</b> " + "  •  ".join(r["scores"]["strengths"]), T_BODY))
-        if r["scores"].get("concerns"):
-            story.append(Paragraph("<b>Concerns:</b> "  + "  •  ".join(r["scores"]["concerns"]),  T_BODY))
-        if r["scores"].get("skill_gap"):
-            story.append(Paragraph("<b>Skill Gap:</b> " + ", ".join(r["scores"]["skill_gap"]),     T_BODY))
-
-        story += [Spacer(1, 0.4*cm), PageBreak()]
-
-    # ── Footer disclaimer ─────────────────────────────────────────────────────
-    story.append(hr())
-    story.append(Paragraph(
-        "AI-generated shortlist. All final hiring decisions must be made by a qualified human recruiter. "
-        "Scores adjustable via override_score(). Full action trace in audit_log.json.",
-        T_FOOT,
-    ))
+        story += [dt, Spacer(1, 0.5*cm)]
 
     doc.build(story)
-    audit("REPORT_GENERATED", f"path={path} candidates={len(results)}")
-    print(f"✅ PDF saved → {path}")
+    audit("REPORT_GENERATED", f"path={path}")
     return path
-
 
 # MAIN AGENT PIPELINE
 def run_agent(
