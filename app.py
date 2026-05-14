@@ -1,9 +1,5 @@
 """
-================================================================================
-TALENTMATCH AI — Streamlit UI
-================================================================================
 Run:  streamlit run app.py
-================================================================================
 """
 
 import os
@@ -236,13 +232,19 @@ with st.sidebar:
     st.markdown("## 🎯 TalentMatch AI")
     st.markdown("---")
 
-    st.markdown("### 🔑 API Configuration")
-    api_key = st.text_input(
-        "Google Gemini API Key",
-        type="password",
-        placeholder="AIza...",
-        help="Get your free key at aistudio.google.com",
-    )
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    api_key = os.getenv("GOOGLE_API_KEY")
+
+    if api_key and not st.session_state.api_key_set:
+        try:
+            agents = get_agent_module()
+            st.session_state.llm = agents["init_llm"](api_key)
+            st.session_state.api_key_set = True
+        except Exception as e:
+            st.error(f"LLM init failed: {e}")
+        
     if api_key and not st.session_state.api_key_set:
         try:
             with st.spinner("Connecting to Gemini…"):
