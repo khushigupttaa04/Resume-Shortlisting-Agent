@@ -318,6 +318,45 @@ def calculate_skill_match(candidate_text: str, required_skills: list) -> dict:
         "match_pct": pct,
         "match_summary": f"{len(matched)}/{len(required_skills)} ({pct}%)"
     }
+
+def compute_tfidf_similarity(candidate: dict, jd: dict) -> dict:
+    """
+    Cosine similarity between candidate text and JD skills.
+    """
+
+    cand_text = (
+        " ".join(candidate.get("skills", []))
+        + " "
+        + candidate.get("summary", "")
+    )
+
+    jd_text = " ".join(
+        jd.get("required_skills", [])
+        + jd.get("nice_to_have", [])
+    )
+
+    if not cand_text.strip() or not jd_text.strip():
+        return {
+            "similarity": 0.0,
+            "similarity_pct": "0.0%"
+        }
+
+    vec = TfidfVectorizer().fit_transform([
+        cand_text,
+        jd_text
+    ])
+
+    score = round(
+        float(
+            cosine_similarity(vec[0], vec[1])[0][0]
+        ) * 100,
+        1
+    )
+
+    return {
+        "similarity": score / 100,
+        "similarity_pct": f"{score}%"
+    }
 # ─────────────────────────────────────────────────────────────────────────────
 # 5-DIMENSION SCORER  (LangChain LCEL)
 # ─────────────────────────────────────────────────────────────────────────────
