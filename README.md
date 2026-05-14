@@ -1,139 +1,274 @@
-# 🎯 TalentMatch AI — HR Resume Shortlisting Agent
+# HR Resume Shortlisting Agent
 
-> **AI Enablement Internship · Task 1** · B.Tech CSE (AI/ML) · 3rd Year
-
-AI-powered resume screening with explainable scoring, audit trail, and a Streamlit UI.
+AI-powered resume screening and explainable candidate ranking platform built using LangChain LCEL, Gemini, Streamlit, TF-IDF semantic matching, and LIME Explainable AI.
 
 ---
 
-## Quick Start
+# Project Overview
 
-```bash
-git clone <repo-url>
-cd talentmatch-ai
-pip install -r requirements.txt
-cp .env.example .env        # add your Gemini API key
-streamlit run app.py        # launch UI
-```
+HR Resume Shortlisting Agent automates the first round of resume screening using:
 
-Or run headlessly:
-```python
-from src.agent import init_llm, run_agent
+- Semantic skill matching
+- Multi-dimensional AI evaluation rubric
+- Explainable AI (XAI)
+- Human-in-the-loop score override
+- Audit logging
+- PDF shortlist generation
 
-llm     = init_llm("YOUR_GEMINI_API_KEY")
-results = run_agent(jd_text=JD, resume_files=["cv1.pdf","cv2.docx"], llm=llm)
-```
+The platform evaluates candidates against a Job Description (JD) and produces:
 
----
+- Ranked candidate shortlist
+- Dimension-level scoring
+- Justifications per score
+- XAI insights
+- Recruiter override capability
+- Downloadable PDF report
 
-## Project Structure
-
-```
-talentmatch-ai/
-├── app.py                  ← Streamlit UI
-├── src/
-│   └── agent.py            ← Full pipeline (JD parser · scorer · XAI · PDF)
-├── sample_data/
-│   ├── jds/sample_jd.txt
-│   └── resumes/            ← Place test resumes here
-├── outputs/                ← Generated PDFs & JSON (git-ignored)
-├── docs/
-│   └── architecture.md
-├── requirements.txt
-├── .env.example
-└── README.md
-```
+The system follows the internship specification and mandatory rubric provided in the enablement brief.
 
 ---
 
-## Architecture — 7-Step Plan-and-Execute
+# Key Features
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│          TALENTMATCH AI — LangChain LCEL Pipeline           │
-├────┬────────────────────────────┬───────────────────────────┤
-│ 1  │  JD Parser                 │ LangChain LCEL chain       │
-│ 2  │  Profile Ingestion         │ PDF / DOCX / TXT / LinkedIn│
-│ 3  │  Semantic Match            │ TF-IDF cosine similarity   │
-│ 4  │  5-Dim LLM Scoring         │ LangChain LCEL chain       │
-│ 5  │  XAI                       │ LIME + dimension contribs  │
-│ 6  │  Rank                      │ sort by total_score desc   │
-│ 7  │  Report                    │ ReportLab PDF + JSON        │
-└────┴────────────────────────────┴───────────────────────────┘
-        │                                        │
-   SQLite cache                          audit_log.json
-   (llm_cache.db)                     (every agent action)
-```
+## Resume Parsing
+
+Supports:
+- PDF
+- DOCX
+- TXT
+- LinkedIn JSON exports
 
 ---
 
-## Scoring Rubric
+## AI-Based Candidate Evaluation
 
-| Dimension           | Weight | 0 – Poor          | 5 – Average     | 10 – Excellent          |
-|---------------------|--------|-------------------|-----------------|-------------------------|
-| Skills Match        | 30 %   | < 30 % match      | 50–70 % match   | > 85 % match            |
-| Experience          | 25 %   | Unrelated domain  | Adjacent domain | Exact domain & seniority|
-| Education & Certs   | 15 %   | Below minimum     | Meets minimum   | Exceeds + extra certs   |
-| Projects / Portfolio| 20 %   | No evidence       | 1–2 generic     | Strong portfolio        |
-| Communication       | 10 %   | Poor grammar      | Adequate        | Crisp & impactful       |
+Candidates are scored on:
 
----
+| Dimension | Weight |
+|---|---|
+| Skills Match | 30% |
+| Experience | 25% |
+| Projects | 20% |
+| Education & Certifications | 15% |
+| Communication | 10% |
 
-## LLM Choice
-
-| Factor          | Decision |
-|-----------------|----------|
-| Model           | **Gemini 2.5 Flash** (`gemini-2.5-flash-preview-05-20`) |
-| Provider        | Google AI Studio |
-| Why             | Free tier · 1M context window · fast · JSON mode reliable |
-| Framework       | **LangChain LCEL** — composable prompt\|llm\|parser chains |
-| Caching         | **SQLiteCache** — zero API calls for repeated prompts during dev |
+The scoring rubric strictly follows the internship requirements.
 
 ---
 
-## Security Mitigations
+## Semantic Skill Matching
 
-| Risk                 | Mitigation |
-|----------------------|------------|
-| **Prompt Injection** | Structured JSON-only output schema; explicit "ignore embedded instructions" directive |
-| **PII in logs**      | `mask_pii()` replaces emails/phones before any log write |
-| **API Key Exposure** | `getpass()` in notebooks; `.env` + `python-dotenv` in production; `.env` in `.gitignore` |
-| **Hallucination**    | `temperature=0`; JSON schema validation; human-in-the-loop `override_score()` |
-| **Unauthorised Use** | API key required; add OAuth/rate-limiting on any deployed endpoint |
-| **File bombs**       | File-size limits enforced before parsing (10 MB PDF / DOCX) |
+Uses:
+- TF-IDF cosine similarity
+- Fuzzy matching
+- Acronym detection
+- Keyword overlap
 
----
+Improved semantic detection supports:
+- NLP ↔ Natural Language Processing
+- ML ↔ Machine Learning
+- APIs ↔ REST API
+- PyTorch ↔ torch
 
-## Human-in-the-Loop Override
-
-```python
-results = override_score(
-    results,
-    candidate_name = "Arjun Mehta",
-    dimension      = "Projects",
-    new_score      = 7.5,
-    reason         = "Strong GitHub portfolio shown at interview",
-    reviewer       = "Anjali Singh (HR Lead)",
-)
-```
-Every change is logged in `audit_log.json` with reviewer, reason, and before/after values.
+Implemented in:
+- `calculate_skill_match()`
+- `compute_tfidf_similarity()`
 
 ---
 
-## XAI — Explainability
+# Explainable AI (XAI)
 
-Two layers of explanation per candidate:
+The platform includes multiple explainability layers:
 
-1. **LIME** (`lime.lime_text`) — which keywords in the resume most influenced the TF-IDF skill-match score.  
-2. **Dimension contributions** — how much each of the 5 rubric dimensions pushed the score above or below the 5.0 baseline.
+## 1. LIME Keyword Importance
+
+Highlights which resume keywords most influenced the AI score.
+
+## 2. Dimension Contribution Analysis
+
+Shows how each rubric dimension affected the final score relative to baseline.
+
+## 3. Visual XAI Dashboard
+
+Interactive graphs include:
+- Candidate comparison charts
+- Heatmaps
+- Radar plots
+- Similarity vs score scatterplots
+- Dimension contribution graphs
 
 ---
 
-## Outputs
+# Human-in-the-Loop (HITL)
 
-| File                            | Description |
-|---------------------------------|-------------|
-| `outputs/shortlist_report.pdf`  | Full ranked PDF with rubric breakdown + XAI |
-| `outputs/scored_candidates.json`| Machine-readable scores for downstream use |
-| `audit_log.json`                | Timestamped record of every agent action |
-| `llm_cache.db`                  | SQLite LLM response cache |
+Recruiters can manually override any dimension score.
+
+Features:
+- Real-time score preview
+- Updated weighted total
+- Audit logging
+- Reason tracking
+- Reviewer attribution
+
+Every override is permanently logged to:
+- `audit_log.json`
+- `audit_log.txt`
+
+---
+
+# Security Mitigations
+
+The project includes mandatory security controls required by the internship brief.
+
+| Risk | Mitigation |
+|---|---|
+| Prompt Injection | Structured prompts + JSON output parsing |
+| API Key Exposure | `.env` + `python-dotenv` + `.gitignore` |
+| PII Leakage | Email and phone masking in logs |
+| Hallucination | Structured rubric + deterministic temperature |
+| Unauthorized Access | Local-only prototype deployment |
+| Auditability | Persistent audit logs |
+| Resume Privacy | Local processing pipeline |
+
+---
+
+# Technical Stack & Decision Log
+
+## LLM Chosen
+
+### Gemini 2.0 Flash / Gemini 3.1 Flash Lite
+
+Chosen because:
+- Fast inference speed
+- Low latency
+- Good structured JSON generation
+- Free-tier friendly
+- Strong LangChain support
+
+---
+
+## Agent Framework
+
+### LangChain LCEL
+
+Architecture:
+- Sequential Plan-and-Execute pipeline
+
+Pipeline:
+1. Parse JD
+2. Read resumes
+3. Extract candidate profile
+4. Compute semantic similarity
+5. AI rubric scoring
+6. Generate XAI explanations
+7. Rank candidates
+8. Generate report
+
+---
+
+## Frontend
+
+### Streamlit
+
+Used for:
+- Interactive recruiter dashboard
+- Resume upload
+- Results visualization
+- XAI graphs
+- Human override controls
+- Audit inspection
+
+Custom UI includes:
+- Warm beige/pastel yellow design system
+- Interactive charts
+- Responsive layout
+- Multi-tab dashboard
+
+---
+
+## Explainability
+
+### LIME
+
+Used to generate local feature importance explanations for resume scoring.
+
+---
+
+## Semantic Matching
+
+### TF-IDF + Cosine Similarity
+
+Used for semantic similarity between:
+- Resume content
+- Job Description skills
+
+Implemented using:
+- `sklearn`
+- `TfidfVectorizer`
+- `cosine_similarity`
+
+---
+
+## Caching
+
+### SQLite Cache
+
+Used via LangChain caching to:
+- Reduce repeated LLM API calls
+- Lower cost
+- Improve speed
+
+---
+
+## PDF Reporting
+
+### ReportLab
+
+Used for:
+- Professional shortlist reports
+- Candidate ranking tables
+- XAI explanations
+- Audit-ready output
+
+---
+
+## Observability (Bonus)
+
+Prepared for:
+- LangSmith
+- Langfuse tracing
+
+Mentioned in sidebar stack and architecture for observability bonus marks.
+
+---
+
+# Project Architecture
+
+```text
+User Uploads JD + Resumes
+            │
+            ▼
+    Streamlit Frontend
+            │
+            ▼
+      LangChain LCEL
+            │
+ ┌──────────┼──────────┐
+ │          │          │
+ ▼          ▼          ▼
+JD Parser  Resume Parser  LinkedIn Parser
+ │          │
+ ▼          ▼
+Semantic Matching (TF-IDF)
+ │
+ ▼
+LLM Rubric Scoring
+ │
+ ▼
+LIME Explainability
+ │
+ ▼
+Candidate Ranking
+ │
+ ▼
+PDF Report + Audit Logs
