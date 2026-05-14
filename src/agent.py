@@ -514,7 +514,7 @@ def generate_pdf_report(results: list, jd: dict, path: str = "outputs/shortlist_
     # ── COVER PAGE ──────────────────────────────────────────────────────────
     story += [
         Spacer(1, 2*cm),
-        Paragraph("TALENTMATCH AI: SHORTLIST REPORT", T_TITLE),
+        Paragraph("HR SHORTLIST REPORT", T_TITLE),
         HRFlowable(width="100%", thickness=1, color=colors.black),
         Spacer(1, 0.5*cm),
         Paragraph(f"Role: {jd.get('role_title','N/A')} | Total Candidates: {len(results)}", T_SUB),
@@ -550,32 +550,29 @@ def generate_pdf_report(results: list, jd: dict, path: str = "outputs/shortlist_
     story += [tbl, PageBreak()]
 
     # ── XAI GRAPHS SECTION ──────────────────────────────────────────────────
-    # Note: For this to work, you must store your plotly figures in st.session_state 
-    # as 'fig_grouped' and 'fig_heat' in your Streamlit UI code.
     import streamlit as st
+    story.append(Paragraph("Executive Visualization", T_SEC))
     
-    story.append(Paragraph("Visual XAI Insights", T_SEC))
-    
-    for fig_key in ["fig_grouped", "fig_heat"]:
+    # Loop through the global charts we saved in app.py
+    for fig_key in ["fig_overall", "fig_heat"]:
         if fig_key in st.session_state:
-            fig = st.session_state[fig_key]
             img_path = f"temp_plots/{fig_key}.png"
-            
-            # Export plotly fig to static PNG
-            fig.write_image(img_path, engine="kaleido", width=800, height=400, scale=2)
-            
-            story.append(Paragraph(f"Analysis Visualization: {fig_key.replace('fig_', '').title()}", T_BODY))
+            st.session_state[fig_key].write_image(img_path, engine="kaleido", width=800, height=400, scale=2)
             story.append(Image(img_path, width=16*cm, height=8*cm))
             story.append(Spacer(1, 0.5*cm))
 
-    if "fig_grouped" in st.session_state or "fig_heat" in st.session_state:
-        story.append(PageBreak())
+    story.append(PageBreak())
 
     # ── PER-CANDIDATE DETAIL ───────────────────────────────────────────────
     for r in results:
         name = r["candidate_info"].get("name", "?")
         story.append(Paragraph(f"Detailed Evaluation: {name}", T_SEC))
-        
+        fig_key = f"fig_chart_{name}"
+        if fig_key in st.session_state:
+            img_path = f"temp_plots/chart_{name.replace(' ', '_')}.png"
+            st.session_state[fig_key].write_image(img_path, engine="kaleido", width=700, height=350)
+            story.append(Image(img_path, width=14*cm, height=7*cm))
+            story.append(Spacer(1, 0.5*cm))
         # Scoring Table
         dim_rows = [["Dimension", "Score", "Justification"]]
         for d in r["scores"]["dimension_scores"]:
