@@ -507,10 +507,9 @@ Note: Interested in switching to data science. No formal ML experience.
                 report_path="outputs/shortlist_report.pdf",
             )
 
-st.session_state.results = results
-st.session_state.run_done = True
-
-            
+            st.session_state.results = results
+            st.session_state.run_done = True
+     
             progress.progress(100, text="✅ Done!")
             _time.sleep(0.5)
             progress.empty()
