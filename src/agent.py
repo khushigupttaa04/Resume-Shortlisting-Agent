@@ -248,27 +248,76 @@ def extract_candidate(resume_text: str, llm) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # SKILL MATCHER  (TF-IDF + keyword overlap)
 # ─────────────────────────────────────────────────────────────────────────────
-def calculate_skill_match(candidate_skills: list, required_skills: list) -> dict:
-    c_lower = [s.lower().strip() for s in candidate_skills]
-    r_lower = [s.lower().strip() for s in required_skills]
-    matched  = [s for s in r_lower if s in c_lower]
-    missing  = [s for s in r_lower if s not in c_lower]
-    pct = round(len(matched) / len(r_lower) * 100, 1) if r_lower else 0.0
-    return {"matched_skills": matched, "missing_skills": missing,
-            "match_pct": pct, "match_summary": f"{len(matched)}/{len(r_lower)} ({pct}%)"}
+
+from difflib import SequenceMatcher
 
 
-def compute_tfidf_similarity(candidate: dict, jd: dict) -> dict:
-    """Cosine similarity between candidate text blob and JD skills."""
-    cand_text = " ".join(candidate.get("skills", [])) + " " + candidate.get("summary", "")
-    jd_text   = " ".join(jd.get("required_skills", []) + jd.get("nice_to_have", []))
-    if not cand_text.strip() or not jd_text.strip():
-        return {"similarity": 0.0, "similarity_pct": "0.0%"}
-    vec = TfidfVectorizer().fit_transform([cand_text, jd_text])
-    score = round(float(cosine_similarity(vec[0], vec[1])[0][0]) * 100, 1)
-    return {"similarity": score / 100, "similarity_pct": f"{score}%"}
+def fuzzy_match(skill: str, text: str, threshold: float = 0.75) -> bool:
+    """
+    General fuzzy semantic-ish matching.
+
+    Detects:
+    - NLP ↔ Natural Language Processing
+    - ML ↔ Machine Learning
+    - APIs ↔ REST API
+    - PyTorch ↔ torch
+    etc.
+    """
+
+    skill = skill.lower().strip()
+    text = text.lower()
+
+    # direct match
+    if skill in text:
+        return True
+
+    words = re.findall(r'\w+', text)
+
+    # fuzzy token matching
+    for word in words:
+
+        ratio = SequenceMatcher(
+            None,
+            skill,
+            word
+        ).ratio()
+
+        if ratio >= threshold:
+            return True
+
+    # acronym detection
+    acronym = "".join(w[0] for w in skill.split() if w)
+
+    if acronym and acronym.lower() in text:
+        return True
+
+    return False
 
 
+def calculate_skill_match(candidate_text: str, required_skills: list) -> dict:
+
+    matched = []
+    missing = []
+
+    for skill in required_skills:
+
+        if fuzzy_match(skill, candidate_text):
+            matched.append(skill)
+
+        else:
+            missing.append(skill)
+
+    pct = round(
+        len(matched) / max(len(required_skills), 1) * 100,
+        1
+    )
+
+    return {
+        "matched_skills": matched,
+        "missing_skills": missing,
+        "match_pct": pct,
+        "match_summary": f"{len(matched)}/{len(required_skills)} ({pct}%)"
+    }
 # ─────────────────────────────────────────────────────────────────────────────
 # 5-DIMENSION SCORER  (LangChain LCEL)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -677,7 +726,17 @@ def run_agent(
         candidate["file"]   = os.path.basename(path)
 
         embedding   = compute_tfidf_similarity(candidate, jd)
-        skill_match = calculate_skill_match(candidate.get("skills", []), jd.get("required_skills", []))
+
+        candidate_blob = (
+            " ".join(candidate.get("skills", []))
+            + " "
+            + text
+        )
+
+        skill_match = calculate_skill_match(
+            candidate_blob,
+            jd.get("required_skills", [])
+        )
         print(f"   Similarity: {embedding['similarity_pct']}  |  Skills: {skill_match['match_summary']}")
 
         scores = score_candidate(candidate, jd, skill_match, llm)
