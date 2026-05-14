@@ -730,6 +730,47 @@ if run_btn:
     st.session_state.results = results
     st.session_state.run_done = True
 
+    if results:
+        import pandas as pd
+        
+        # 1. Prepare Data
+        rows = []
+        for r in results:
+            name = r["candidate_info"].get("name", "Unknown")
+            # Overall Score
+            rows.append({
+                "Candidate": name,
+                "Type": "Total",
+                "Dimension": "Overall",
+                "Score": r["scores"]["total_score"]
+            })
+            # Dimension Scores
+            for d in r["scores"]["dimension_scores"]:
+                rows.append({
+                    "Candidate": name,
+                    "Type": "Dimension",
+                    "Dimension": d["dimension"],
+                    "Score": d["score"]
+                })
+        df_plot = pd.DataFrame(rows)
+
+        # 2. Overall Ranking Graph
+        df_rank = df_plot[df_plot["Type"] == "Total"].sort_values("Score", ascending=False)
+        fig_overall = px.bar(df_rank, x="Candidate", y="Score", title="Overall Candidate Ranking", color_discrete_sequence=["#D4A017"])
+        st.session_state["fig_overall"] = fig_overall
+
+        # 3. Heatmap Graph
+        df_heat = df_plot[df_plot["Type"] == "Dimension"].pivot(index="Candidate", columns="Dimension", values="Score")
+        fig_heat = go.Figure(data=go.Heatmap(z=df_heat.values, x=df_heat.columns, y=df_heat.index, colorscale='Oryel'))
+        st.session_state["fig_heat"] = fig_heat
+
+        # 4. Per-Candidate Graphs
+        for r in results:
+            name = r["candidate_info"].get("name", "Unknown")
+            c_df = pd.DataFrame(r["scores"]["dimension_scores"])
+            fig_c = px.bar(c_df, x="dimension", y="score", title=f"Score Breakdown: {name}", color_discrete_sequence=["#4A3F2F"])
+            st.session_state[f"fig_chart_{name}"] = fig_c
+
     progress.progress(100, text="Done!")
 
     _time.sleep(0.5)
@@ -741,7 +782,10 @@ if run_btn:
     # Output
     # ─────────────────────────────────────────────
     if st.session_state.results:
-
+        agents["generate_pdf_report"](
+            st.session_state.results,
+            st.session_state.get("jd_parsed", {}), # or pass active_jd
+        )
         st.success(
             f"Evaluated {len(st.session_state.results)} candidates."
         )
@@ -938,7 +982,7 @@ with tab_xai:
         fig_grouped.update_traces(textposition="outside", textfont_size=11)
         fig_grouped.update_yaxes(range=[0, 11])
         st.plotly_chart(fig_grouped, use_container_width=True)
-
+        st.session_state["fig_grouped"] = fig_grouped
         # ── 2. Heatmap — candidates × dimensions ────────────────────────────
         st.markdown("### Score Heatmap")
         pivot = df_all.pivot(index="Candidate", columns="Dimension", values="Score")
@@ -959,7 +1003,7 @@ with tab_xai:
         ))
         fig_heat.update_layout(**make_plotly_layout(height=320))
         st.plotly_chart(fig_heat, use_container_width=True)
-
+        st.session_state["fig_heat"] = fig_heat
         # ── 3. Total score bar + recommendation colour ───────────────────────
         st.markdown("### Overall Ranking")
         tot_data = sorted(
