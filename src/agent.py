@@ -98,7 +98,7 @@ def init_llm(api_key: str) -> ChatGoogleGenerativeAI:
     os.environ["GOOGLE_API_KEY"] = api_key
     set_llm_cache(SQLiteCache(database_path="llm_cache.db"))
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash-preview-05-20",
+        model="gemini-3.1-flash-lite",
         google_api_key=api_key,
         temperature=0,
         max_tokens=2048,
