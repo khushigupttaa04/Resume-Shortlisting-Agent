@@ -1,0 +1,9 @@
+.env
+*.pyc
+__pycache__/
+outputs/
+llm_cache.db
+audit_log.json
+audit_log.txt
+*.pdf
+.DS_Store
