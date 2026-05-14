@@ -352,7 +352,7 @@ with tab_run:
         run_btn = st.button(
             "🚀 Run Agent",
             use_container_width=True,
-            disabled=not st.session_state.api_key_set,
+            disabled=False,
         )
 
     SAMPLE_JD = """
@@ -494,14 +494,23 @@ Note: Interested in switching to data science. No formal ML experience.
                 st.session_state.results = results
                 st.session_state.run_done = True
 
-            thread = threading.Thread(target=_run)
-            thread.start()
-
-            for i, (pct, msg) in enumerate(steps):
-                _time.sleep(1.5)
+            for pct, msg in steps:
                 progress.progress(pct, text=msg)
+                _time.sleep(0.5)
 
-            thread.join()
+            results = agents["run_agent"](
+                jd_text=active_jd,
+                resume_files=resume_paths,
+                linkedin_files=linkedin_paths,
+                llm=st.session_state.llm,
+                generate_report=True,
+                report_path="outputs/shortlist_report.pdf",
+            )
+
+st.session_state.results = results
+st.session_state.run_done = True
+
+            
             progress.progress(100, text="✅ Done!")
             _time.sleep(0.5)
             progress.empty()
