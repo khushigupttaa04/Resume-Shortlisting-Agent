@@ -334,6 +334,7 @@ def compute_tfidf_similarity(candidate: dict, jd: dict) -> dict:
     return {
         "similarity": score / 100,
         "similarity_pct": f"{score}%"
+    }
     
 # 5-DIMENSION SCORER  (LangChain LCEL)
 _SCORE_PROMPT = PromptTemplate(
