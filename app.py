@@ -27,8 +27,8 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 /* ── PALETTE TOKENS ──────────────────────────────────────────────────────────
-   Primary accent : #D4A017  (mustard / golden yellow)
-   Hover accent   : #B8860B  (dark goldenrod)
+   Primary accent : #FFF9C4  (pastel yellow)
+   Hover accent   : #FFF59D (pastel goldenrod)
    Background     : #F5F1EA  (warm cream)
    Sidebar bg     : #EDE8DF
    Text primary   : #1A1207  (near-black, warm)
@@ -448,9 +448,6 @@ with st.sidebar:
             st.session_state.api_key_set = True
         except Exception as e:
             st.error(f"LLM init failed: {e}")
-
-    st.markdown("---")
-
     # Stack info as clean chips, no table
     st.markdown("### Stack")
     st.markdown('<span class="sidebar-chip">Gemini 2.0 Flash</span>', unsafe_allow_html=True)
@@ -460,7 +457,6 @@ with st.sidebar:
     st.markdown('<span class="sidebar-chip">ReportLab PDF</span>', unsafe_allow_html=True)
     st.markdown('<span class="sidebar-chip">LangSmith / Langfuse</span>', unsafe_allow_html=True)
 
-    st.markdown("---")
 
     # Scoring weights as simple text — no table
     st.markdown("### Scoring Weights")
@@ -634,7 +630,7 @@ PROJECTS:
     if use_sample:
         st.session_state["sample_jd"] = SAMPLE_JD
         st.session_state["sample_resumes"] = SAMPLE_RESUMES
-        st.info("Sample data loaded (5 candidates) — click **Run Agent** to evaluate.")
+        st.info("Sample data loaded - 5 candidates — click **Run Agent** to evaluate.")
 
 if run_btn:
 
@@ -888,9 +884,9 @@ TEXT      = "#000000"
 
 MUSTARD_SCALE = [
     [0.0,  "#FEE2E2"],   # red-ish (low)
-    [0.4,  "#FEF3C7"],   # amber (mid)
+    [0.4,  "#FFF9C4"],   # amber (mid)
     [0.7,  "#FDE68A"],   # yellow
-    [1.0,  "#D4A017"],   # mustard (high)
+    [1.0,  "#FFF59D"],   # mustard (high)
 ]
 
 def make_plotly_layout(title="", height=400):
@@ -901,6 +897,8 @@ def make_plotly_layout(title="", height=400):
         font=dict(family="Inter", size=13, color=TEXT),
         margin=dict(l=20, r=20, t=50 if title else 20, b=20),
         height=height,
+        xaxis=dict(tickfont=dict(color="#000000"), title_font=dict(color="#000000")),
+        yaxis=dict(tickfont=dict(color="#000000"), title_font=dict(color="#000000")),
     )
 
 with tab_xai:
@@ -933,7 +931,7 @@ with tab_xai:
             color="Dimension",
             barmode="group",
             text="Score",
-            color_discrete_sequence=["#D4A017","#8B6914","#F0C040","#C8961E","#E8A820"],
+            color_discrete_sequence=["#FFF9C4", "#FFF59D", "#FFF176", "#FFEE58", "#FDD835"],
             height=420,
         )
         fig_grouped.update_layout(**make_plotly_layout(height=420))
@@ -1053,26 +1051,6 @@ with tab_xai:
                 fig_hbar.update_xaxes(range=[0, 12])
                 st.plotly_chart(fig_hbar, use_container_width=True)
 
-            # LIME keyword importance (if available)
-            lime_feats = cand.get("xai_features", [])
-            if lime_feats:
-                st.markdown("**LIME Keyword Importance**")
-                lf_df = pd.DataFrame(lime_feats[:10], columns=["Keyword", "Weight"])
-                lf_df["Color"] = lf_df["Weight"].apply(
-                    lambda w: "#22C55E" if w >= 0 else "#EF4444"
-                )
-                fig_lime = go.Figure(go.Bar(
-                    x=lf_df["Weight"],
-                    y=lf_df["Keyword"],
-                    orientation="h",
-                    marker_color=lf_df["Color"],
-                    text=lf_df["Weight"].round(3),
-                    textposition="outside",
-                ))
-                fig_lime.update_layout(**make_plotly_layout("LIME Feature Weights", height=300))
-                fig_lime.update_xaxes(zeroline=True, zerolinecolor="#C9B99A")
-                st.plotly_chart(fig_lime, use_container_width=True)
-
             # Justification table
             with st.expander("Dimension justifications"):
                 for d in cand["scores"]["dimension_scores"]:
@@ -1080,33 +1058,7 @@ with tab_xai:
 
             st.divider()
 
-        # ── 5. Scatter — TF-IDF similarity vs total score ───────────────────
-        st.markdown("### TF-IDF Similarity vs Total Score")
-        scatter_rows = []
-        for r in results:
-            sim_raw = r.get("embedding", {}).get("similarity_pct", "0%")
-            try:
-                sim_val = float(str(sim_raw).replace("%",""))
-            except Exception:
-                sim_val = 0.0
-            scatter_rows.append({
-                "Name": r["candidate_info"].get("name","?"),
-                "Similarity": sim_val,
-                "Score": r["scores"]["total_score"],
-                "Rec": r["scores"]["recommendation"],
-            })
-        df_sc = pd.DataFrame(scatter_rows)
-        fig_sc = px.scatter(
-            df_sc, x="Similarity", y="Score",
-            color="Rec",
-            text="Name",
-            size_max=18,
-            color_discrete_map={"HIRE":"#22C55E","MAYBE":"#F59E0B","NO HIRE":"#EF4444"},
-            height=380,
-        )
-        fig_sc.update_traces(textposition="top center", marker=dict(size=14))
-        fig_sc.update_layout(**make_plotly_layout("Resume–JD similarity vs AI score", height=380))
-        st.plotly_chart(fig_sc, use_container_width=True)
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
