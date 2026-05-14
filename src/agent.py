@@ -1,13 +1,3 @@
-"""
-================================================================================
-TALENTMATCH AI — HR Resume Shortlisting Agent
-================================================================================
-Stack  : Gemini 2.5 Flash · LangChain LCEL · TF-IDF · LIME XAI · ReportLab
-Author : [Your Name] | 3rd Year B.Tech AIML
-Task   : AI Enablement Internship – Task 1
-================================================================================
-"""
-
 # ── Stdlib ────────────────────────────────────────────────────────────────────
 import os, re, json, logging, time
 from datetime import datetime
@@ -45,10 +35,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch, cm
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CONSTANTS
-# ─────────────────────────────────────────────────────────────────────────────
-DELAY_BETWEEN_CANDIDATES = 4   # seconds — stays within Gemini free-tier RPM
+DELAY_BETWEEN_CANDIDATES = 4   # gemini free-tier RPM
 
 # Brand palette
 C_NAVY   = colors.HexColor("#1B3A6B")
@@ -58,9 +45,8 @@ C_PURPLE = colors.HexColor("#7C3AED")
 C_LGRAY  = colors.HexColor("#F3F4F6")
 C_DGRAY  = colors.HexColor("#374151")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# AUDIT LOGGER  (Security: full trace of every agent action)
-# ─────────────────────────────────────────────────────────────────────────────
+# AUDIT LOGGER  
+
 logging.basicConfig(
     filename="audit_log.txt",
     level=logging.INFO,
@@ -75,9 +61,7 @@ def audit(event: str, detail: str = "") -> None:
         f.write(json.dumps(entry) + "\n")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PII MASKING  (Security: never write raw emails/phones to logs)
-# ─────────────────────────────────────────────────────────────────────────────
+# PII MASKING   avoid write raw emails/phones to logs
 def mask_pii(text: str) -> str:
     """Mask emails and phone numbers before writing to any log."""
     # email: first char + **** + domain
@@ -90,9 +74,8 @@ def mask_pii(text: str) -> str:
     return text
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # LLM SETUP  (LangChain + SQLite caching)
-# ─────────────────────────────────────────────────────────────────────────────
+
 def init_llm(api_key: str) -> ChatGoogleGenerativeAI:
     """Initialise Gemini via LangChain with SQLite response caching."""
     os.environ["GOOGLE_API_KEY"] = api_key
@@ -108,9 +91,7 @@ def init_llm(api_key: str) -> ChatGoogleGenerativeAI:
     return llm
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # DOCUMENT READERS
-# ─────────────────────────────────────────────────────────────────────────────
 def read_pdf(path: str, max_mb: int = 10) -> str:
     assert os.path.getsize(path) / 1e6 <= max_mb, f"PDF > {max_mb} MB"
     text = ""
@@ -166,9 +147,8 @@ def read_linkedin_json(path: str) -> str:
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # JD PARSER  (LangChain LCEL)
-# ─────────────────────────────────────────────────────────────────────────────
+
 _JD_PROMPT = PromptTemplate(
     input_variables=["jd_text"],
     template="""You are an expert HR analyst. Extract structured requirements.
@@ -207,9 +187,9 @@ def analyze_jd(jd_text: str, llm) -> dict:
                 "required_education": "Bachelor's Degree"}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # CANDIDATE PROFILER  (LangChain LCEL)
-# ─────────────────────────────────────────────────────────────────────────────
+
 _PROFILE_PROMPT = PromptTemplate(
     input_variables=["resume_text"],
     template="""Extract candidate information from this resume.
@@ -245,9 +225,7 @@ def extract_candidate(resume_text: str, llm) -> dict:
                 "work_history": [], "projects": [], "summary": ""}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # SKILL MATCHER  (TF-IDF + keyword overlap)
-# ─────────────────────────────────────────────────────────────────────────────
 
 from difflib import SequenceMatcher
 
@@ -356,10 +334,8 @@ def compute_tfidf_similarity(candidate: dict, jd: dict) -> dict:
     return {
         "similarity": score / 100,
         "similarity_pct": f"{score}%"
-    }
-# ─────────────────────────────────────────────────────────────────────────────
+    
 # 5-DIMENSION SCORER  (LangChain LCEL)
-# ─────────────────────────────────────────────────────────────────────────────
 _SCORE_PROMPT = PromptTemplate(
     input_variables=["candidate_json", "jd_json", "skill_summary"],
     template="""You are an expert HR evaluator. Score this candidate strictly.
@@ -429,9 +405,8 @@ def score_candidate(candidate: dict, jd: dict, skill_match: dict, llm) -> Option
         return None
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # XAI — LIME + Dimension contributions
-# ─────────────────────────────────────────────────────────────────────────────
+
 def explain_with_lime(resume_text: str, required_skills: list, top_n: int = 6) -> list:
     """LIME explanation: which keywords most influenced the skill-match score."""
     explainer = lime.lime_text.LimeTextExplainer(class_names=["Low Fit", "High Fit"])
@@ -463,9 +438,7 @@ def explain_dimension_contributions(scores: dict) -> list:
     return contribs
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # HUMAN-IN-THE-LOOP OVERRIDE
-# ─────────────────────────────────────────────────────────────────────────────
 VALID_DIMENSIONS = {"Skills Match", "Experience", "Education & Certs", "Projects", "Communication"}
 
 def override_score(
@@ -509,9 +482,8 @@ def override_score(
     return results
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # PDF REPORT GENERATOR
-# ─────────────────────────────────────────────────────────────────────────────
+
 def generate_pdf_report(results: list, jd: dict, path: str = "outputs/shortlist_report.pdf") -> str:
     """
     Professional ReportLab PDF with:
@@ -527,7 +499,7 @@ def generate_pdf_report(results: list, jd: dict, path: str = "outputs/shortlist_
     styles = getSampleStyleSheet()
     story  = []
 
-    # ── helpers ──────────────────────────────────────────────────────────────
+    #  helpers 
     def sty(name, **kw):
         return ParagraphStyle(name, **kw)
 
@@ -546,7 +518,7 @@ def generate_pdf_report(results: list, jd: dict, path: str = "outputs/shortlist_
     def hr():
         return HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#D1D5DB"))
 
-    # ── Cover ─────────────────────────────────────────────────────────────────
+    #  Cover 
     story += [
         Spacer(1, 1.2*cm),
         Paragraph("TalentMatch AI", T_TITLE),
@@ -573,7 +545,7 @@ def generate_pdf_report(results: list, jd: dict, path: str = "outputs/shortlist_
         PageBreak(),
     ]
 
-    # ── Rankings summary table ────────────────────────────────────────────────
+    # Rankings summary table 
     story += [Paragraph("Candidate Rankings", T_SEC)]
 
     hdr = [["Rank", "Candidate", "Similarity", "Total", "Skills", "Exp", "Edu", "Projects", "Comm", "Decision"]]
@@ -610,7 +582,7 @@ def generate_pdf_report(results: list, jd: dict, path: str = "outputs/shortlist_
     ]))
     story += [tbl, Spacer(1, 0.3*cm), PageBreak()]
 
-    # ── Per-candidate detail ──────────────────────────────────────────────────
+    # Per-candidate detail 
     for r in results:
         name  = r["candidate_info"].get("name", "?")
         total = r["scores"]["total_score"]
@@ -696,9 +668,7 @@ def generate_pdf_report(results: list, jd: dict, path: str = "outputs/shortlist_
     return path
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # MAIN AGENT PIPELINE
-# ─────────────────────────────────────────────────────────────────────────────
 def run_agent(
     jd_text: str,
     resume_files: List[str] = None,
