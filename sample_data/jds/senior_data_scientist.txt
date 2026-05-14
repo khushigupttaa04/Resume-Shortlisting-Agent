@@ -1,1 +1,14 @@
+Senior Data Scientist
 
+Required Skills: Python, Machine Learning, SQL, TensorFlow, scikit-learn, Docker, Git
+Nice to have: NLP, MLflow, SHAP, Kubernetes
+Experience: 2–5 years in data science or ML roles
+Education: B.Tech/M.Tech in Computer Science, Statistics, or related field
+Domain: Fintech / E-commerce / SaaS
+Certifications (preferred): AWS ML Specialty, Google ML Engineer, Coursera ML Specialization
+
+Responsibilities:
+- Build and deploy production-grade ML models
+- Communicate findings to non-technical stakeholders
+- Drive projects end-to-end with clean, documented code
+- Mentor junior team members
