@@ -5,6 +5,7 @@ Run:  streamlit run app.py
 import os
 import json
 import tempfile
+import time
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
@@ -260,24 +261,119 @@ div[data-baseweb="tab-list"] button[aria-selected="true"] {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   BUTTONS  — mustard yellow
+   BUTTONS — pastel yellow
 ───────────────────────────────────────────────────────────── */
 .stButton > button {
-    background: #D4A017;
-    color: #1A1207;
-    border: none;
-    border-radius: 10px;
-    font-weight: 700;
-    padding: 0.55rem 1.6rem;
-    transition: 0.2s ease;
+    background: #E8C86A !important;
+    color: #1A1207 !important;
+    border: 1px solid #D4A017 !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    padding: 0.65rem 1.6rem !important;
+    min-height: 48px !important;
+    transition: all 0.2s ease;
 }
 
 .stButton > button:hover {
-    background: #B8860B;
-    transform: translateY(-1px);
-    color: #1A1207;
+    background: #F3D97F !important;
+    color: #1A1207 !important;
+    border: 1px solid #B8860B !important;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   DOWNLOAD BUTTON
+───────────────────────────────────────────────────────────── */
+.stDownloadButton > button {
+    background: #1A1207 !important;
+    color: white !important;
+    border-radius: 12px !important;
+    border: none !important;
+    font-weight: 700 !important;
+}
+
+.stDownloadButton > button:hover {
+    background: #3D2B00 !important;
+    color: white !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SELECTBOX / DROPDOWN FIX
+───────────────────────────────────────────────────────────── */
+
+/* Main select box */
+div[data-baseweb="select"] > div {
+    background: white !important;
+    color: #1A1207 !important;
+    border: 1px solid #D5CCBC !important;
+    border-radius: 12px !important;
+}
+
+/* Selected text */
+div[data-baseweb="select"] span {
+    color: #1A1207 !important;
+    font-weight: 500 !important;
+}
+
+/* Dropdown menu container */
+div[role="listbox"] {
+    background: white !important;
+    border: 1px solid #D5CCBC !important;
+    border-radius: 12px !important;
+    padding: 6px !important;
+}
+
+/* Dropdown rows */
+div[role="option"] {
+    background: white !important;
+    color: #1A1207 !important;
+    border-radius: 8px !important;
+    padding: 10px !important;
+}
+
+/* Hovered row */
+div[role="option"]:hover {
+    background: #FFF9C4 !important;
+    color: #1A1207 !important;
+}
+
+/* Selected row */
+div[aria-selected="true"] {
+    background: #FDE68A !important;
+    color: #1A1207 !important;
+}
+
+/* Inputs */
+.stTextInput input,
+.stTextArea textarea {
+    background: white !important;
+    color: #1A1207 !important;
+    border: 1px solid #D5CCBC !important;
+    border-radius: 12px !important;
+}
+
+/* Slider */
+.stSlider div[data-baseweb="slider"] {
+    color: #D4A017 !important;
+}
+
+/* ALL BUTTONS FIX */
+button[kind],
+.stButton button,
+.stDownloadButton button {
+    background: #E8C86A !important;
+    color: #1A1207 !important;
+    border: 1px solid #D4A017 !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+}
+
+/* Hover */
+button[kind]:hover,
+.stButton button:hover,
+.stDownloadButton button:hover {
+    background: #F3D97F !important;
+    color: #1A1207 !important;
+}
 /* ─────────────────────────────────────────────────────────────
    METRICS
 ───────────────────────────────────────────────────────────── */
@@ -297,22 +393,30 @@ div[data-baseweb="tab-list"] button[aria-selected="true"] {
    FILE UPLOADER
 ───────────────────────────────────────────────────────────── */
 [data-testid="stFileUploader"] {
-    border: 2px dashed #C9B99A;
-    border-radius: 16px;
-    padding: 0.8rem;
-    background: white;
+    border: 2px dashed #D5CCBC !important;
+    border-radius: 16px !important;
+    background: white !important;
+    padding: 1rem !important;
+}
+
+[data-testid="stFileUploader"] section button {
+    background: #E8C86A !important;
+    color: #1A1207 !important;
+    border-radius: 10px !important;
+    border: 1px solid #D4A017 !important;
 }
 
 /* ─────────────────────────────────────────────────────────────
    INPUTS
 ───────────────────────────────────────────────────────────── */
-.stTextArea textarea,
-.stTextInput input {
+.stTextInput input,
+.stTextArea textarea {
     background: white !important;
     color: #1A1207 !important;
+    border: 1px solid #D5CCBC !important;
     border-radius: 12px !important;
-    border: 1px solid #C9B99A !important;
 }
+
 
 /* ─────────────────────────────────────────────────────────────
    PROGRESS BAR  — mustard
@@ -1169,25 +1273,235 @@ with tab_override:
         reviewer = st.text_input("Reviewer name", value="HR Manager")
 
         if st.button("Apply Override"):
-            if not reason.strip():
-                st.warning("Please provide a reason.")
-            else:
-                agents = get_agent_module()
-                st.session_state.results = agents["override_score"](
-                    st.session_state.results,
-                    candidate_name=c_name,
-                    dimension=dimension,
-                    new_score=new_score,
-                    reason=reason,
-                    reviewer=reviewer,
-                )
-                st.success(f"Score updated for {c_name} — {dimension}: {new_score}/10")
-                if st.session_state.results:
-                    agents["generate_pdf_report"](
+          
+
+
+              if not reason.strip():
+                  st.warning("Please provide a reason.")
+
+              else:
+                  agents = get_agent_module()
+
+                  # ─────────────────────────────────────────────
+                  # Apply override
+                  # ─────────────────────────────────────────────
+                  st.session_state.results = agents["override_score"](
                         st.session_state.results,
-                        st.session_state.get("jd_parsed", {}),
+                        candidate_name=c_name,
+                        dimension=dimension,
+                        new_score=new_score,
+                        reason=reason,
+                        reviewer=reviewer,
                     )
-                    st.caption("PDF report regenerated with override applied.")
+
+                    # ─────────────────────────────────────────────
+                    # LIVE UPDATE RESULTS
+                    # ─────────────────────────────────────────────
+                  for cand in st.session_state.results:
+
+                      if cand["candidate_info"]["name"] == c_name:
+
+                      # Update dimension score
+                          for d in cand["scores"]["dimension_scores"]:
+
+                              if d["dimension"] == dimension:
+
+                                  old_score = d["score"]
+
+                                  d["score"] = float(new_score)
+
+                                  d["justification"] = (
+                                      f"Manually overridden by "
+                                      f"{reviewer}: {reason}"
+                                  )
+
+                    # Recompute weighted total
+                          weights_map = {
+                              "Skills Match": 0.30,
+                              "Experience": 0.25,
+                              "Education & Certs": 0.15,
+                              "Projects": 0.20,
+                              "Communication": 0.10,
+                          }
+
+                          total = 0
+
+                          for d in cand["scores"]["dimension_scores"]:
+
+                              total += (
+                                  d["score"]
+                                  * weights_map.get(d["dimension"], 0)
+                              )
+
+                          cand["scores"]["total_score"] = round(total, 2)
+
+                # Recommendation
+                          score = cand["scores"]["total_score"]
+
+                          if score >= 8:
+                              rec = "HIRE"
+
+                          elif score >= 5:
+                              rec = "MAYBE"
+
+                          else:
+                              rec = "NO HIRE"
+
+                          cand["scores"]["recommendation"] = rec
+
+                # ─────────────────────────────────────
+                # LIVE XAI UPDATE
+                # ─────────────────────────────────────
+                          cand.setdefault("xai", {})
+                          cand["xai"].setdefault("strengths", [])
+                          cand["xai"].setdefault("concerns", [])
+
+                          cand["xai"]["strengths"].append(
+                              f"Human override applied on "
+                              f"{dimension}."
+                          )
+
+                          cand["xai"]["concerns"].append(
+                              f"AI score changed from "
+                              f"{old_score} to {new_score}."
+                          )
+
+                          break
+
+                  # ─────────────────────────────────────────────
+                  # REBUILD ALL GRAPHS LIVE
+                  # ─────────────────────────────────────────────
+                  import pandas as pd
+                  import plotly.express as px
+                  import plotly.graph_objects as go
+
+                  rows = []
+
+                  for r in st.session_state.results:
+
+                      name = r["candidate_info"].get(
+                          "name",
+                          "Unknown"
+                      )
+
+                      rows.append({
+                          "Candidate": name,
+                          "Type": "Total",
+                          "Dimension": "Overall",
+                          "Score": r["scores"]["total_score"]
+                      })
+
+                      for d in r["scores"]["dimension_scores"]:
+
+                          rows.append({
+                          "Candidate": name,
+                          "Type": "Dimension",
+                          "Dimension": d["dimension"],
+                          "Score": d["score"]
+                      })
+
+                  df_plot = pd.DataFrame(rows)
+
+                  # Overall graph
+                  df_rank = df_plot[
+                      df_plot["Type"] == "Total"
+                  ].sort_values(
+                      "Score",
+                      ascending=False
+                  )
+
+                  fig_overall = px.bar(
+                      df_rank,
+                      x="Candidate",
+                      y="Score",
+                      title="Overall Candidate Ranking",
+                      color_discrete_sequence=["#D4A017"]
+                  )
+
+                  fig_overall.update_layout(
+                      plot_bgcolor="#FFFDF8",
+                      paper_bgcolor="#FFFDF8",
+                      font=dict(color="#1A1207")
+                  )
+
+                  st.session_state["fig_overall"] = fig_overall
+
+                  # Heatmap
+                  df_heat = df_plot[
+                      df_plot["Type"] == "Dimension"
+                  ].pivot(
+                      index="Candidate",
+                      columns="Dimension",
+                      values="Score"
+                  )
+
+                  fig_heat = go.Figure(
+                      data=go.Heatmap(
+                      z=df_heat.values,
+                      x=df_heat.columns,
+                      y=df_heat.index,
+                      colorscale="YlOrBr"
+                      )
+                  )
+
+                  fig_heat.update_layout(
+                      title="Dimension Score Heatmap",
+                      plot_bgcolor="#FFFDF8",
+                      paper_bgcolor="#FFFDF8",
+                      font=dict(color="#1A1207")
+                  )
+
+                  st.session_state["fig_heat"] = fig_heat
+
+        # Candidate charts
+                  for r in st.session_state.results:
+
+                      name = r["candidate_info"].get(
+                          "name",
+                          "Unknown"
+                      )
+
+                      c_df = pd.DataFrame(
+                          r["scores"]["dimension_scores"]
+                      )
+
+                      fig_candidate = px.bar(
+                          c_df,
+                          x="dimension",
+                          y="score",
+                          title=f"Score Breakdown: {name}",
+                          color_discrete_sequence=["#D4A017"]
+                      )
+
+                      fig_candidate.update_layout(
+                        plot_bgcolor="#FFFDF8",
+                        paper_bgcolor="#FFFDF8",
+                        font=dict(color="#1A1207")
+                      )
+
+                      st.session_state[
+                          f"fig_chart_{name}"
+                      ] = fig_candidate
+
+                  # ─────────────────────────────────────────────
+                  # AUTO REGENERATE PDF
+                  # ─────────────────────────────────────────────
+                  agents["generate_pdf_report"](
+                      st.session_state.results,
+                      st.session_state.get("jd_parsed", {}),
+                  )
+
+                  st.success(
+                  f"Override applied successfully for "
+                  f"{c_name}. "
+                  f"Results, XAI insights, graphs, "
+                  f"and PDF updated instantly."
+                  )
+                  time.sleep(5)
+
+
+                  st.rerun()
+                  st.caption("PDF report regenerated with override applied.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
