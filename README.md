@@ -3,7 +3,7 @@
 AI-powered resume screening and explainable candidate ranking platform built using LangChain LCEL, Gemini, Streamlit, TF-IDF semantic matching, and LIME Explainable AI.
 
 ---
-
+DEMO: https://drive.google.com/file/d/1NLx6ota8u2b0epK-kNvZKXzsY_FL5wXN/view?usp=sharing
 # Project Overview
 
 HR Resume Shortlisting Agent automates the first round of resume screening using:
