@@ -98,7 +98,7 @@ def init_llm(api_key: str) -> ChatGoogleGenerativeAI:
         max_tokens=2048,
         max_retries=3,
     )
-    audit("LLM_INIT", "model=gemini-2.5-flash | cache=SQLite")
+    audit("LLM_INIT", "model=gemini-3.1-flash-lite | cache=SQLite")
     return llm
 
 
